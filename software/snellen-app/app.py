@@ -136,8 +136,11 @@ class SnellenApp:
         result_holder = [None]
 
         def do_listen():
-            spoken, raw = listen_for_letter(LISTEN_TIMEOUT, MIC_DEVICE_INDEX)
-            result_holder[0] = (spoken, raw)
+            try:
+                spoken, raw = listen_for_letter(LISTEN_TIMEOUT, MIC_DEVICE_INDEX)
+                result_holder[0] = (spoken, raw)
+            except Exception as e:
+                result_holder[0] = (None, f"mic error: {e}")
 
         self.clear()
 
@@ -168,14 +171,14 @@ class SnellenApp:
 
         spoken, raw = result_holder[0]
         correct = (spoken == letter) if spoken else False
-        self.show_feedback(correct, spoken)
+        self.show_feedback(correct, spoken, raw)
         return correct
 
-    def show_feedback(self, correct: bool, spoken: Optional[str]):
+    def show_feedback(self, correct: bool, spoken: Optional[str], raw: str = ""):
         self.clear()
         color  = "#2ecc71" if correct else "#e74c3c"
         symbol = "CORRECT" if correct else "WRONG"
-        heard  = f'Heard: "{spoken}"' if spoken else "Not heard"
+        heard  = f'Heard: "{spoken}"' if spoken else f'Not heard ({raw})'
 
         tk.Label(
             self.root, text=symbol,

@@ -7,7 +7,7 @@ DISPLAY_OFFSET_Y = 0
 # ── Microphone ────────────────────────────────────────────────────
 # Run this to list devices: python -c "import speech_recognition as sr; print(sr.Microphone.list_microphone_names())"
 # Set to the index of your microphone (0 = first/default mic)
-MIC_DEVICE_INDEX = 0
+MIC_DEVICE_INDEX = 1  # Microphone (M-830) — change if your mic index is different
 
 # ── Test Settings ─────────────────────────────────────────────────
 PASS_THRESHOLD = 0.6    # 60% correct per row to pass and continue
