@@ -10,7 +10,7 @@ import datetime
 import threading
 from pathlib import Path
 
-from config import DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, PASS_THRESHOLD, LISTEN_TIMEOUT, EYES
+from config import DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, PASS_THRESHOLD, LISTEN_TIMEOUT, EYES, MIC_DEVICE_INDEX
 from chart import SNELLEN_CHART
 from speech import listen_for_letter
 
@@ -127,7 +127,7 @@ class SnellenApp:
         result_holder = [None]
 
         def do_listen():
-            spoken, raw = listen_for_letter(LISTEN_TIMEOUT)
+            spoken, raw = listen_for_letter(LISTEN_TIMEOUT, MIC_DEVICE_INDEX)
             result_holder[0] = (spoken, raw)
             self.root.event_generate("<<ListenDone>>")
 
@@ -155,17 +155,11 @@ class SnellenApp:
 
         self.root.update()
 
-        # Listen in background thread
+        # Listen in background thread, poll until done
         threading.Thread(target=do_listen, daemon=True).start()
-        self.root.wait_variable(tk.Variable(self.root))
-
-        # Wait for listen to complete
-        self.root.wait_event = True
-        self.root.bind("<<ListenDone>>", lambda e: setattr(self.root, "wait_event", False))
-        while getattr(self.root, "wait_event", True):
+        while result_holder[0] is None:
             self.root.update()
-            if result_holder[0] is not None:
-                break
+            self.root.after(100)
 
         spoken, raw = result_holder[0] if result_holder[0] else (None, "timeout")
         correct = spoken == letter if spoken else False

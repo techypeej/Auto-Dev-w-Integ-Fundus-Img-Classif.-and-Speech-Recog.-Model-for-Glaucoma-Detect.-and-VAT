@@ -15,7 +15,7 @@ SPOKEN_MAP = {
 }
 
 
-def listen_for_letter(timeout: int = 8) -> tuple[str | None, str]:
+def listen_for_letter(timeout: int = 8, device_index: int = 0) -> tuple[str | None, str]:
     """
     Listens for a single spoken letter.
     Returns (matched_letter, raw_text).
@@ -24,7 +24,7 @@ def listen_for_letter(timeout: int = 8) -> tuple[str | None, str]:
     r = sr.Recognizer()
     r.energy_threshold = 300
 
-    with sr.Microphone() as source:
+    with sr.Microphone(device_index=device_index) as source:
         r.adjust_for_ambient_noise(source, duration=0.3)
         try:
             audio = r.listen(source, timeout=timeout, phrase_time_limit=3)
