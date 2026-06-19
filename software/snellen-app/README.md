@@ -6,7 +6,7 @@ Automated Snellen chart test displayed on an HDMI screen inside a VR headset. Pa
 
 - Laptop (runs the app)
 - 7-inch HDMI screen (mounted in VR headset)
-- Microphone (USB or built-in)
+- Microphone (USB or built-in) — M-830 condenser mic recommended
 - VR headset enclosure with biconvex lens
 
 ## How It Works
@@ -14,14 +14,14 @@ Automated Snellen chart test displayed on an HDMI screen inside a VR headset. Pa
 1. Enter patient name
 2. App instructs patient to cover one eye
 3. Letters are shown one at a time, largest to smallest
-4. Patient reads each letter aloud into the microphone
+4. Patient reads each letter aloud — or operator presses the key as fallback
 5. Speech recognition scores each response
 6. Visual acuity (e.g. 20/20, 20/40) is calculated per eye
 7. Results saved to `results/` as JSON
 
 ---
 
-## Setup — Linux
+## Setup — Linux (or Windows Git Bash)
 
 ```bash
 cd snellen-app
@@ -33,7 +33,7 @@ Run the app:
 ./run.sh
 ```
 
-## Setup — Windows
+## Setup — Windows (Command Prompt)
 
 Double-click `setup.bat` (first time only).
 
@@ -44,29 +44,90 @@ run.bat
 
 ---
 
-## Configuration (`config.py`)
+## Microphone Setup
 
-| Setting | Default | Description |
+Do this every time you move to a new PC.
+
+**Step 1 — activate the venv first:**
+```bash
+# Linux / Git Bash
+source venv/bin/activate
+
+# Windows cmd
+venv\Scripts\activate
+```
+
+**Step 2 — list all detected microphones:**
+```bash
+python -c "import speech_recognition as sr; [print(i, m) for i, m in enumerate(sr.Microphone.list_microphone_names())]"
+```
+
+Example output:
+```
+0 Microsoft Sound Mapper - Input
+1 Microphone (M-830)
+2 Microsoft Sound Mapper - Output
+...
+```
+
+**Step 3 — find your microphone index.** Look for your mic name in the list. Ignore outputs (speakers), ignore "Sound Mapper" entries. Pick the index of your actual mic.
+
+**Step 4 — update `config.py`:**
+```python
+MIC_DEVICE_INDEX = 1   # change to your mic's index
+```
+
+**Step 5 — test it works:**
+```bash
+python test_mic.py
+```
+
+Type the index you found, say something, and confirm it prints back what you said. Only continue to the app after this test passes.
+
+### Known device indexes (update as you go)
+
+| PC | Microphone | Index |
 |---|---|---|
-| `DISPLAY_OFFSET_X` | `1920` | X position of HDMI screen |
-| `DISPLAY_OFFSET_Y` | `0` | Y position of HDMI screen |
-| `MIC_DEVICE_INDEX` | `0` | Microphone device index |
-| `PASS_THRESHOLD` | `0.6` | Min correct per row to continue |
-| `LISTEN_TIMEOUT` | `8` | Seconds to wait for voice response |
+| Paul John's laptop (Windows) | Microphone (M-830) | 1 |
+| Thesis lab PC (Linux) | HDA Intel PCH: ALC236 Analog | 0 |
 
-**Find your HDMI screen position:**
+---
+
+## Display Setup
+
+**Testing on laptop only (no HDMI screen):**
+```python
+DISPLAY_OFFSET_X = 0   # window appears on main screen
+```
+
+**When using the VR HDMI screen:**
+```python
+DISPLAY_OFFSET_X = 1920  # or wherever your HDMI screen sits
+```
+
+Find the exact value:
 
 Linux:
 ```bash
 xrandr --query
+# Look for your HDMI output and note the X offset (e.g. 1920x1080+1920+0 → offset is 1920)
 ```
 
-Windows: Settings → System → Display → scroll down to see monitor arrangement. The HDMI screen position in pixels is your `DISPLAY_OFFSET_X`.
+Windows: Settings → System → Display → drag monitors to match physical layout → the second screen's left edge position is your `DISPLAY_OFFSET_X`.
 
-**Find your microphone index:**
-```bash
-python -c "import speech_recognition as sr; [print(i, m) for i, m in enumerate(sr.Microphone.list_microphone_names())]"
-```
+**Press Escape** at any time to toggle fullscreen (useful during setup).
+
+---
+
+## Configuration (`config.py`) — Full Reference
+
+| Setting | Description | Testing value | Production value |
+|---|---|---|---|
+| `DISPLAY_OFFSET_X` | X position of window | `0` | `1920` (or your HDMI offset) |
+| `DISPLAY_OFFSET_Y` | Y position of window | `0` | `0` |
+| `MIC_DEVICE_INDEX` | Microphone device index | depends on PC | depends on PC |
+| `PASS_THRESHOLD` | Min fraction correct per row | `0.6` | `0.6` |
+| `LISTEN_TIMEOUT` | Seconds to wait for speech | `8` | `8` |
 
 ---
 
@@ -96,20 +157,23 @@ Each test is saved to `results/PatientName_YYYYMMDD_HHMMSS.json`:
 
 ```
 snellen-app/
-├── app.py          — main application
-├── chart.py        — Snellen letter rows and acuity scores
-├── speech.py       — microphone and speech recognition
-├── config.py       — display and test settings
-├── setup.sh        — first-time setup (Linux)
-├── setup.bat       — first-time setup (Windows)
-├── run.sh          — run the app (Linux)
-├── run.bat         — run the app (Windows)
-├── results/        — saved patient test results (JSON)
+├── app.py           — main application
+├── chart.py         — Snellen letter rows and acuity scores
+├── speech.py        — microphone and speech recognition
+├── config.py        — display and mic settings (edit this per device)
+├── test_mic.py      — standalone mic test (run this to verify mic before app)
+├── setup.sh         — first-time setup (Linux / Git Bash)
+├── setup.bat        — first-time setup (Windows cmd)
+├── run.sh           — run the app (Linux / Git Bash)
+├── run.bat          — run the app (Windows cmd)
+├── results/         — saved patient test results (JSON)
 └── requirements.txt
 ```
 
 ## Notes
 
-- Requires internet connection for Google Speech Recognition
-- Font sizes in `chart.py` may need calibration based on your specific lens and screen
+- Requires internet connection — Google Speech Recognition sends audio to Google's servers
+- If voice recognition fails, the operator can press the letter key on the keyboard as a fallback
+- Font sizes in `chart.py` may need calibration based on your specific lens and screen distance
 - The biconvex VR lens optically simulates the standard 6-meter Snellen testing distance
+- `[speech] heard: '...'` is printed to the terminal every time Google returns a result — check this to debug recognition issues

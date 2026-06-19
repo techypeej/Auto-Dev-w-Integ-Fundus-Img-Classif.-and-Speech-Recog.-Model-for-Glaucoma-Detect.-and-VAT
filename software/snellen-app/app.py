@@ -2,8 +2,12 @@
 Automated Snellen Visual Acuity Test
 One eye at a time, one letter at a time, voice input.
 
-Run (Linux):   ./run.sh
-Run (Windows): run.bat
+Run (Linux/Windows Git Bash): ./run.sh
+Run (Windows cmd):            run.bat
+
+Keyboard fallback: if voice isn't recognized, the operator can press the
+letter key on the keyboard during the listening screen.
+Press Escape to toggle fullscreen (useful during testing).
 """
 import tkinter as tk
 import json
@@ -20,7 +24,7 @@ from speech import listen_for_letter
 RESULTS_DIR = Path(__file__).parent / "results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
-FONT = "Arial"   # cross-platform (Helvetica not available on Windows)
+FONT = "Arial"
 
 
 class SnellenApp:
@@ -30,13 +34,17 @@ class SnellenApp:
         self.root.configure(bg="white")
         self.root.geometry(f"800x600+{DISPLAY_OFFSET_X}+{DISPLAY_OFFSET_Y}")
         self.root.attributes("-fullscreen", True)
-        self.root.resizable(False, False)
+
+        # Escape toggles fullscreen — useful during testing
+        self.root.bind("<Escape>", lambda e: self.root.attributes(
+            "-fullscreen", not self.root.attributes("-fullscreen")
+        ))
 
         self.patient_name = ""
         self.eye_results  = {}
         self.eye_details  = {}
 
-    # ── Utilities ─────────────────────────────────────────────────────
+    # ── Utilities ──────────────────────────────────────────────────────
 
     def clear(self):
         for w in self.root.winfo_children():
@@ -58,21 +66,20 @@ class SnellenApp:
         ).place(relx=0.5, rely=y, anchor="center")
 
     def pause(self, seconds: float):
-        """Pause while keeping the UI responsive."""
         end = time.time() + seconds
         while time.time() < end:
             self.root.update()
             time.sleep(0.05)
 
-    # ── Screens ───────────────────────────────────────────────────────
+    # ── Screens ────────────────────────────────────────────────────────
 
     def show_welcome(self):
         self.clear()
-        self.label("Snellen Visual Acuity Test", size=36, bold=True, y=0.25)
-        self.label("Enter patient name:", size=22, y=0.42)
+        self.label("Snellen Visual Acuity Test", size=36, bold=True, y=0.22)
+        self.label("Enter patient name:", size=22, y=0.40)
 
         entry = tk.Entry(self.root, font=(FONT, 24), justify="center", width=20)
-        entry.place(relx=0.5, rely=0.55, anchor="center")
+        entry.place(relx=0.5, rely=0.52, anchor="center")
         entry.focus()
 
         def start():
@@ -82,7 +89,7 @@ class SnellenApp:
                 self.show_eye_instruction(eye_index=0)
 
         self.root.bind("<Return>", lambda e: start())
-        self.button("Start Test", start, y=0.72)
+        self.button("Start Test", start, y=0.70)
 
     def show_eye_instruction(self, eye_index: int):
         if eye_index >= len(EYES):
@@ -93,11 +100,11 @@ class SnellenApp:
         other_eye = EYES[1 - eye_index]
 
         self.clear()
-        self.label(f"Testing: {eye} Eye", size=34, bold=True, y=0.25)
-        self.label(f"Please cover your {other_eye.upper()} eye", size=26, y=0.42)
-        self.label("You will see one letter at a time.", size=20, color="#555", y=0.55)
-        self.label("Say the letter out loud when you see it.", size=20, color="#555", y=0.63)
-        self.button("I'm Ready", lambda: self.run_eye_test(eye_index), y=0.78)
+        self.label(f"Testing: {eye} Eye", size=34, bold=True, y=0.22)
+        self.label(f"Cover your {other_eye.upper()} eye", size=26, y=0.38)
+        self.label("One letter will appear at a time.", size=20, color="#555", y=0.52)
+        self.label("Say it out loud — or press its key.", size=20, color="#555", y=0.60)
+        self.button("I'm Ready", lambda: self.run_eye_test(eye_index), y=0.76)
 
     def run_eye_test(self, eye_index: int):
         eye = EYES[eye_index]
@@ -135,13 +142,27 @@ class SnellenApp:
     def test_one_letter(self, letter: str, font_size: int, eye: str) -> bool:
         result_holder = [None]
 
+        # ── Voice listener in background thread ──
         def do_listen():
             try:
                 spoken, raw = listen_for_letter(LISTEN_TIMEOUT, MIC_DEVICE_INDEX)
-                result_holder[0] = (spoken, raw)
+                if result_holder[0] is None:
+                    result_holder[0] = ("voice", spoken, raw)
             except Exception as e:
-                result_holder[0] = (None, f"mic error: {e}")
+                if result_holder[0] is None:
+                    result_holder[0] = ("voice", None, f"mic error: {e}")
 
+        # ── Keyboard fallback: operator presses the letter ──
+        def on_key(event):
+            if not event.char:
+                return
+            key = event.char.upper()
+            if key.isalpha() and len(key) == 1 and result_holder[0] is None:
+                result_holder[0] = ("keyboard", key, f"keyboard:{key}")
+
+        self.root.bind("<Key>", on_key)
+
+        # ── Build listening screen ──
         self.clear()
 
         tk.Label(
@@ -153,47 +174,68 @@ class SnellenApp:
             self.root, text=letter,
             font=("Courier New", font_size, "bold"),
             bg="white", fg="black"
-        ).place(relx=0.5, rely=0.45, anchor="center")
+        ).place(relx=0.5, rely=0.42, anchor="center")
 
-        mic_label = tk.Label(
-            self.root, text="[ Listening... ]",
+        status_label = tk.Label(
+            self.root, text="",
             font=(FONT, 18), bg="white", fg="#888"
         )
-        mic_label.place(relx=0.5, rely=0.78, anchor="center")
-        self.root.update()
+        status_label.place(relx=0.5, rely=0.75, anchor="center")
 
+        hint_label = tk.Label(
+            self.root,
+            text="Say the letter aloud  |  or press its key on keyboard",
+            font=(FONT, 13), bg="white", fg="#bbb"
+        )
+        hint_label.place(relx=0.5, rely=0.85, anchor="center")
+
+        self.root.update()
         threading.Thread(target=do_listen, daemon=True).start()
 
-        # Poll until listening is done
+        # ── Poll: update countdown, accept keyboard, wait for result ──
+        start_time = time.time()
         while result_holder[0] is None:
+            elapsed   = time.time() - start_time
+            remaining = max(0, LISTEN_TIMEOUT - elapsed + 0.5)  # +0.5 for calibration
+            status_label.config(text=f"[ Listening... {remaining:.0f}s ]")
             self.root.update()
-            time.sleep(0.05)
+            time.sleep(0.1)
 
-        spoken, raw = result_holder[0]
+        self.root.unbind("<Key>")
+
+        _, spoken, raw = result_holder[0]
         correct = (spoken == letter) if spoken else False
-        self.show_feedback(correct, spoken, raw)
+        self.show_feedback(letter, correct, spoken, raw)
         return correct
 
-    def show_feedback(self, correct: bool, spoken: Optional[str], raw: str = ""):
+    def show_feedback(self, expected: str, correct: bool, spoken: Optional[str], raw: str = ""):
         self.clear()
         color  = "#2ecc71" if correct else "#e74c3c"
         symbol = "CORRECT" if correct else "WRONG"
-        heard  = f'Heard: "{spoken}"' if spoken else f'Not heard ({raw})'
+
+        if spoken:
+            heard = f'Heard: "{raw}"  →  matched as  {spoken}'
+        else:
+            heard = f'Not recognized  ({raw})'
 
         tk.Label(
             self.root, text=symbol,
             font=(FONT, 72, "bold"),
             bg="white", fg=color
-        ).place(relx=0.5, rely=0.42, anchor="center")
+        ).place(relx=0.5, rely=0.38, anchor="center")
+
+        tk.Label(
+            self.root, text=f"Expected: {expected}",
+            font=(FONT, 22), bg="white", fg="#333"
+        ).place(relx=0.5, rely=0.60, anchor="center")
 
         tk.Label(
             self.root, text=heard,
-            font=(FONT, 20),
-            bg="white", fg="#555"
+            font=(FONT, 16), bg="white", fg="#777"
         ).place(relx=0.5, rely=0.70, anchor="center")
 
         self.root.update()
-        self.pause(1.2)   # show feedback for 1.2 seconds
+        self.pause(1.5)
 
     def show_eye_result(self, eye: str, acuity: str, eye_index: int):
         self.clear()
@@ -201,7 +243,10 @@ class SnellenApp:
         self.label(acuity, size=72, bold=True, color="#2c3e50", y=0.48)
 
         next_index = eye_index + 1
-        next_label = f"Continue to {EYES[next_index]} Eye" if next_index < len(EYES) else "View Final Results"
+        if next_index < len(EYES):
+            next_label = f"Continue to {EYES[next_index]} Eye"
+        else:
+            next_label = "View Final Results"
         self.button(next_label, lambda: self.show_eye_instruction(next_index), y=0.75)
 
     def show_final_results(self):
@@ -218,7 +263,7 @@ class SnellenApp:
         self.label("Results saved.", size=16, color="#aaa", y=0.78)
         self.button("New Patient", self.restart, y=0.88)
 
-    # ── Save & Restart ────────────────────────────────────────────────
+    # ── Save & Restart ─────────────────────────────────────────────────
 
     def save_results(self):
         record = {
