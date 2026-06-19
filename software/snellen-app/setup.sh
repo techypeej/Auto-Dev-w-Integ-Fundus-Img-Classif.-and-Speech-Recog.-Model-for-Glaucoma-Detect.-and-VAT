@@ -1,14 +1,24 @@
 #!/bin/bash
-# First-time setup for Linux
-echo "Installing system dependency..."
-sudo apt-get install -y portaudio19-dev
+cd "$(dirname "$0")"
+
+# Install system dependency (Linux only)
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo "Installing portaudio (Linux)..."
+    sudo apt-get install -y portaudio19-dev
+fi
 
 echo "Creating virtual environment..."
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv venv 2>/dev/null || python -m venv venv
 
-echo "Installing Python packages..."
-pip install -r requirements.txt
+# Activate venv — path differs between Windows (Git Bash) and Linux
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    source venv/Scripts/activate
+else
+    source venv/bin/activate
+fi
+
+echo "Installing packages..."
+pip install SpeechRecognition pyaudio
 
 echo ""
 echo "Setup complete. Run the app with: ./run.sh"
