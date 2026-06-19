@@ -1,4 +1,5 @@
 import speech_recognition as sr
+from typing import Optional, Tuple
 
 # Maps spoken words → Snellen letters
 SPOKEN_MAP = {
@@ -15,7 +16,7 @@ SPOKEN_MAP = {
 }
 
 
-def listen_for_letter(timeout: int = 8, device_index: int = 0) -> tuple[str | None, str]:
+def listen_for_letter(timeout: int = 8, device_index: int = 0) -> Tuple[Optional[str], str]:
     """
     Listens for a single spoken letter.
     Returns (matched_letter, raw_text).
