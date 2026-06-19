@@ -3,12 +3,9 @@ echo Creating virtual environment...
 python -m venv venv
 call venv\Scripts\activate
 
-echo Installing Python packages...
+echo Installing packages...
 pip install SpeechRecognition
-
-echo Installing PyAudio for Windows...
-pip install pipwin
-pipwin install pyaudio
+pip install pyaudio
 
 echo.
 echo Setup complete. Run the app with: run.bat
