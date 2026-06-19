@@ -1,0 +1,23 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Model weights (too large for git)
+software/glaucoma-model/weights/*.h5
+software/glaucoma-model/weights/*.zip
+
+# Dataset (too large for git)
+software/glaucoma-model/data/raw/
+software/glaucoma-model/data/processed/
+software/glaucoma-model/data/teachable_machine/
+software/glaucoma-model/data/teachable_machine_balanced/
+software/glaucoma-model/data/teachable_machine_color/
+
+# Test results
+software/snellen-app/results/
+
+# OS
+.DS_Store
+Thumbs.db
