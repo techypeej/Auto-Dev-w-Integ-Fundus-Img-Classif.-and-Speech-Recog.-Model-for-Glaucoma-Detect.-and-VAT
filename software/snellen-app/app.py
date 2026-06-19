@@ -213,29 +213,35 @@ class SnellenApp:
         color  = "#2ecc71" if correct else "#e74c3c"
         symbol = "CORRECT" if correct else "WRONG"
 
+        # Result
+        tk.Label(self.root, text=symbol,
+                 font=(FONT, 64, "bold"), bg="white", fg=color
+                 ).place(relx=0.5, rely=0.25, anchor="center")
+
+        # Expected letter
+        tk.Label(self.root, text=f"Expected:  {expected}",
+                 font=(FONT, 24, "bold"), bg="white", fg="#222"
+                 ).place(relx=0.5, rely=0.46, anchor="center")
+
+        # What Google actually returned (raw) — most important for debugging
+        tk.Label(self.root, text=f'Google heard:  "{raw}"',
+                 font=(FONT, 20), bg="white", fg="#555"
+                 ).place(relx=0.5, rely=0.58, anchor="center")
+
+        # What it matched to (or didn't)
         if spoken:
-            heard = f'Heard: "{raw}"  →  matched as  {spoken}'
+            match_text  = f"Matched as:  {spoken}"
+            match_color = "#2ecc71" if correct else "#e74c3c"
         else:
-            heard = f'Not recognized  ({raw})'
+            match_text  = "No match found — add this word to SPOKEN_MAP in speech.py"
+            match_color = "#e74c3c"
 
-        tk.Label(
-            self.root, text=symbol,
-            font=(FONT, 72, "bold"),
-            bg="white", fg=color
-        ).place(relx=0.5, rely=0.38, anchor="center")
-
-        tk.Label(
-            self.root, text=f"Expected: {expected}",
-            font=(FONT, 22), bg="white", fg="#333"
-        ).place(relx=0.5, rely=0.60, anchor="center")
-
-        tk.Label(
-            self.root, text=heard,
-            font=(FONT, 16), bg="white", fg="#777"
-        ).place(relx=0.5, rely=0.70, anchor="center")
+        tk.Label(self.root, text=match_text,
+                 font=(FONT, 16), bg="white", fg=match_color
+                 ).place(relx=0.5, rely=0.70, anchor="center")
 
         self.root.update()
-        self.pause(1.5)
+        self.pause(3.0)  # 3 seconds so you can read what happened
 
     def show_eye_result(self, eye: str, acuity: str, eye_index: int):
         self.clear()
